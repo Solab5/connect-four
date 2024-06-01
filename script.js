@@ -1,7 +1,7 @@
 // Connect four Game
 
 // Gameboard function
-const gameBoard = (() => {
+function gameBoard(){
     const rows = 6;
     const columns = 7;
     const board = [];
@@ -12,7 +12,36 @@ const gameBoard = (() => {
             board[i].push(Cell());
         }
     }
-});
+
+    // method for getting the board
+    const getBoard = () => board;
+
+    // method for adding a token to the board
+    // we need to find the lowest cell in the column then change the cell value to the player's number
+    const dropToken = (column, player) => {
+        const availableCells = board.filter(row => row[column].getValue() === 0).map(row => row[column]);
+        
+        // if no cells the move is invalid
+        if(!availableCells.length) return false;
+
+        // otherwise pick the last one in the array
+        const lowestRow = availableCells.length - 1; // Corrected variable name from 'availableCell' to 'availableCells'
+        board[lowestRow][column].addToken(player);
+    };
+    
+    // method to print the board to the console
+    const printBoard = () => {
+        const boardWithCellValues = board.map(row => row.map(cell => cell.getValue())); // Added 'const' keyword
+        console.log(boardWithCellValues);
+    }
+
+    // here we provide an interface for the rest of the application to interact with the gameboard
+    return {
+        getBoard,
+        dropToken,
+        printBoard
+    };
+} // Added closing brace
 
 // Cell factory function
 function Cell() {
@@ -29,8 +58,98 @@ function Cell() {
     return { 
         addToken, 
         getValue 
-    }
+    };
 }
-                   
 
-   
+// Game controller
+function gameController(
+    playerOneName = 'Player 1',
+    playerTwoName = 'Player 2'
+    ){
+    const board = gameBoard();
+    const players = [
+        {
+            name: playerOneName,
+            token: 1
+        },
+        {
+            name: playerTwoName,
+            token: 2
+        }
+    ];
+    let currentPlayer = players[0];
+
+    const switchPlayerTurn = () => {
+        currentPlayer = currentPlayer === players[0] ? players[1] : players[0];
+    }
+    
+    const getActivePlayer = () => currentPlayer;
+
+    const printNewRound = () => {
+        board.printBoard();
+        console.log(`It's ${getActivePlayer().name}'s turn`);
+    }; // Added missing closing brace
+
+    const playRound = (column) => {
+        // drop token for current player
+        console.log(`Dropping ${getActivePlayer().name}' column into column ${column}`);
+        board.dropToken(column, getActivePlayer().token);
+
+        // switch player turn
+        switchPlayerTurn();
+        printNewRound();
+    };
+
+    // intial play game message
+    printNewRound();
+
+    return {
+        playRound,
+        getActivePlayer,
+        getBoard: board.getBoard
+    };
+} // Removed extra closing brace
+
+function screenController() {
+    const game = gameController();
+    const playerTurnDiv = document.querySelector('.turn');
+    const boardDiv = document.querySelector('.board');
+
+    const updateScreen = () => {
+        // clear the board
+        boardDiv.textContent = '';
+
+        // get the newest version of the board and player turn
+        const board = game.getBoard();
+        const activePlayer = game.getActivePlayer();
+
+        // display player's turn
+        playerTurnDiv.textContent = `It's ${activePlayer.name}'s turn....`;
+
+        // render board squares
+        board.forEach(row => {
+            row.forEach((cell, index) => {
+                const cellButton = document.createElement('button');
+                cellButton.classList.add('cell');
+
+                cellButton.dataset.column = index;
+                cellButton.textContent = cell.getValue();
+                boardDiv.appendChild(cellButton);
+            })
+        })
+    }
+
+    // add event listener for the board
+    function clickHandlerEvent(e) {
+        const selectedColumn = e.target.dataset.column;
+        if(! selectedColumn) return;    
+        
+        game.playRound(selectedColumn);
+        updateScreen();
+    }
+    boardDiv.addEventListener('click', clickHandlerEvent);
+
+    // initial screen render
+    updateScreen();
+}
+screenController();
