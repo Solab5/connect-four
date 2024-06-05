@@ -78,6 +78,9 @@ function gameController(
         }
     ];
     let currentPlayer = players[0];
+    let gameResult = {status: 'ongoing'};
+
+    const getResult = () => gameResult;
 
     const switchPlayerTurn = () => {
         currentPlayer = currentPlayer === players[0] ? players[1] : players[0];
@@ -95,9 +98,88 @@ function gameController(
         console.log(`Dropping ${getActivePlayer().name}' column into column ${column}`);
         board.dropToken(column, getActivePlayer().token);
 
+        // logic for checking  a win
+        // check for horizontal win
+        function checkHorizontal() {
+            for(let i = 0; i < 6; i++) {
+                for(let j = 0; j < 4; j++) {
+                    if(board.getBoard()[i][j].getValue() === getActivePlayer().token &&
+                        board.getBoard()[i][j+1].getValue() === getActivePlayer().token &&
+                        board.getBoard()[i][j+2].getValue() === getActivePlayer().token &&
+                        board.getBoard()[i][j+3].getValue() === getActivePlayer().token) {
+                            return true;
+                        }
+                }
+            }
+            return false;
+        }
+
+        // check for vertical win
+        function checkVertical() {
+            for(let i = 0; i < 3; i++) {
+                for(let j = 0; j < 7; j++) {
+                    if(board.getBoard()[i][j].getValue() === getActivePlayer().token &&
+                        board.getBoard()[i+1][j].getValue() === getActivePlayer().token &&
+                        board.getBoard()[i+2][j].getValue() === getActivePlayer().token &&
+                        board.getBoard()[i+3][j].getValue() === getActivePlayer().token) {
+                            return true;
+                        }
+                }
+            }
+            return false;
+        }
+        // check for diagonal win
+        function checkDiagonal() {
+            for(let i = 0; i < 3; i++) {
+                for(let j = 0; j < 4; j++) {
+                    if(board.getBoard()[i][j].getValue() === getActivePlayer().token &&
+                        board.getBoard()[i+1][j+1].getValue() === getActivePlayer().token &&
+                        board.getBoard()[i+2][j+2].getValue() === getActivePlayer().token &&
+                        board.getBoard()[i+3][j+3].getValue() === getActivePlayer().token) {
+                            return true;
+                        }
+                }
+            }
+            for(let i = 0; i < 3; i++) {
+                for(let j = 3; j < 7; j++) {
+                    if(board.getBoard()[i][j].getValue() === getActivePlayer().token &&
+                        board.getBoard()[i+1][j-1].getValue() === getActivePlayer().token &&
+                        board.getBoard()[i+2][j-2].getValue() === getActivePlayer().token &&
+                        board.getBoard()[i+3][j-3].getValue() === getActivePlayer().token) {
+                            return true;
+                        }
+                }
+            }
+            return false;
+        }
+
+        // check for draw
+        function checkDraw() {
+            return board.getBoard().every(row => row.every(cell => cell.getValue() !== 0));
+        }
+
+        // Check for end  of game
+        if (checkHorizontal() || checkVertical() || checkDiagonal()) {
+            console.log(`${getActivePlayer().name} wins!`);
+            gameResult = {
+                status: 'won',
+                winner: getActivePlayer()
+            };
+            return;
+        } else if (checkDraw()) {
+            console.log('The game is a draw');
+            gameResult = {
+                status: 'draw'
+            };
+            return;
+        }
+
         // switch player turn
         switchPlayerTurn();
         printNewRound();
+        return {
+            status: 'ongoing'
+        };
     };
 
     // intial play game message
@@ -106,7 +188,8 @@ function gameController(
     return {
         playRound,
         getActivePlayer,
-        getBoard: board.getBoard
+        getBoard: board.getBoard,
+        getResult
     };
 } // Removed extra closing brace
 
@@ -114,6 +197,7 @@ function screenController() {
     const game = gameController();
     const playerTurnDiv = document.querySelector('.turn');
     const boardDiv = document.querySelector('.board');
+    const winDiv = document.querySelector('.win');
 
     const updateScreen = () => {
         // clear the board
@@ -122,6 +206,7 @@ function screenController() {
         // get the newest version of the board and player turn
         const board = game.getBoard();
         const activePlayer = game.getActivePlayer();
+        const result = game.getResult();
 
         // display player's turn
         playerTurnDiv.textContent = `It's ${activePlayer.name}'s turn....`;
@@ -137,6 +222,15 @@ function screenController() {
                 boardDiv.appendChild(cellButton);
             })
         })
+
+        // display win message
+        if(result.status === 'won') {
+            winDiv.textContent = `${result.winner.name} wins!`;
+        } else if(result.status === 'draw') {
+            winDiv.textContent = 'The game is a draw!';
+        } else {
+            winDiv.textContent = '';
+        }
     }
 
     // add event listener for the board
